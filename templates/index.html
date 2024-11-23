@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Object Scanner</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body class="ready">
+    <div class="status-container">
+        <h1>Object Scanner Status</h1>
+        <div class="preview-container">
+            <div class="last-capture preview-box">
+                <img id="last-capture" class="preview-image" src="/static/images/placeholder.png">
+                <div class="capture-controls">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="auto-download">
+                        <span class="slider"></span>
+                        Auto Download Images
+                    </label>
+                </div>
+            </div>
+            <div class="live-preview preview-box">
+                <img id="live-view" class="preview-image" src="/static/images/placeholder.png">
+            </div>
+        </div>
+        <div class="controls">
+            <button id="resume-capture" class="resume-btn btn">Resume Capture (Enter)</button>
+        </div>
+        <div class="status-items">
+            <div class="status-item" id="object-id">Object #0</div>
+            <div class="status-item" id="image-number">Image 0</div>
+            <div class="status-item" id="status">ready</div>
+        </div>
+        <div class="debug-console">
+            <div class="debug-header">
+                <h3>Debug Console</h3>
+                <button id="clear-debug" class="btn">Clear</button>
+            </div>
+            <div id="debug-log" class="debug-messages"></div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="/js/main.js"></script>
+</body>
+</html>
