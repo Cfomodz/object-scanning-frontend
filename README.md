@@ -2,6 +2,8 @@
 
 A small Flask app with WebSocket support to aid in the semi-autonomous capturing of images and barcodes.
 
+![image](https://github.com/user-attachments/assets/4e4d5194-5c61-421f-b505-e313ed416663)
+
 ## Features
 
 - **Motion Detection**: Automatically detects motion to capture images.
