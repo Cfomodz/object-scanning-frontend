@@ -1,8 +1,1 @@
-flask-socketio
-opencv-python
-numpy
-matplotlib
-Pillow
-requests
-requests-toolbelt
-pynput
+flask
