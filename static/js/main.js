@@ -15,11 +15,14 @@ const statusElement = document.getElementById('status');
 const debugLog = document.getElementById('debug-log');
 const startCaptureBtn = document.getElementById('start-capture');
 const clearDebugBtn = document.getElementById('clear-debug');
+const rotateBtn = document.getElementById('rotate-btn');
 
 let capturing = true;
 let motionDetected = false;
 let motionTimeout = null;
 let detectingMotion = false; // To prevent multiple concurrent detectMotion calls
+let rotationAngle = 0; // Rotation angle in degrees
+let videoTrack;
 
 function addDebugMessage(message) {
     const timestamp = new Date().toLocaleTimeString();
@@ -33,14 +36,15 @@ function addDebugMessage(message) {
 function startWebcam(deviceId) {
     const constraints = {
         video: {
-            width: { ideal: 640 },
-            height: { ideal: 480 },
+            width: { max: 1920 },
+            height: { max: 1080 },
             deviceId: deviceId ? { exact: deviceId } : undefined
         }
     };
     navigator.mediaDevices.getUserMedia(constraints)
         .then(stream => {
             liveView.srcObject = stream;
+            videoTrack = stream.getVideoTracks()[0]; // Store the video track
             liveView.onloadedmetadata = () => {
                 liveView.play();
                 addDebugMessage('Webcam started');
@@ -91,10 +95,31 @@ function detectMotion() {
 
         let begin = Date.now();
 
-        // Draw the video frame onto the canvas
-        context.drawImage(liveView, 0, 0, width, height);
+        // Clear the canvas
+        context.clearRect(0, 0, width, height);
 
-        // Get the image data from the canvas
+        // Save the context state
+        context.save();
+
+        // Translate to the center of the canvas
+        context.translate(width / 2, height / 2);
+
+        // Rotate the canvas
+        context.rotate((rotationAngle * Math.PI) / 180);
+
+        // Draw the video frame with rotation
+        context.drawImage(
+            liveView,
+            -width / 2,
+            -height / 2,
+            width,
+            height
+        );
+
+        // Restore the context state
+        context.restore();
+
+        // Get the image data from the canvas after rotation
         let imageData = context.getImageData(0, 0, width, height);
 
         // Convert the canvas data to cv.Mat
@@ -152,7 +177,30 @@ function takePicture() {
     canvas.width = liveView.videoWidth;
     canvas.height = liveView.videoHeight;
     const context = canvas.getContext('2d');
-    context.drawImage(liveView, 0, 0, canvas.width, canvas.height);
+
+    // Clear the canvas
+    context.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Save the context state
+    context.save();
+
+    // Translate to the center of the canvas
+    context.translate(canvas.width / 2, canvas.height / 2);
+
+    // Rotate the canvas
+    context.rotate((rotationAngle * Math.PI) / 180);
+
+    // Draw the video frame with rotation
+    context.drawImage(
+        liveView,
+        -canvas.width / 2,
+        -canvas.height / 2,
+        canvas.width,
+        canvas.height
+    );
+
+    // Restore the context state
+    context.restore();
 
     // Display the captured image
     lastCapturedView.src = canvas.toDataURL('image/png');
@@ -185,3 +233,92 @@ startCaptureBtn.addEventListener('click', () => {
 clearDebugBtn.addEventListener('click', () => {
     debugLog.innerHTML = '';
 });
+
+rotateBtn.addEventListener('click', () => {
+    // Increase rotation angle by 90 degrees
+    rotationAngle = (rotationAngle + 90) % 360;
+    liveView.style.transform = `rotate(${rotationAngle}deg)`;
+    addDebugMessage(`Rotated to ${rotationAngle} degrees`);
+});
+
+// Function to apply constraints
+function applyVideoConstraints() {
+    if (videoTrack) {
+        const exposureAuto = document.getElementById('exposure-auto').checked;
+        const whiteBalanceAuto = document.getElementById('white-balance-auto').checked;
+        const focusAuto = document.getElementById('focus-auto').checked;
+
+        const sliderValue = parseFloat(document.getElementById('exposure-control').value);
+        const exposureValue = (sliderValue - 127.5) / 12.75; // Convert to -10 to 10 range
+        const brightnessValue = sliderValue; // Use 0 to 255 range directly
+        const whiteBalanceValue = parseInt(document.getElementById('white-balance-control').value);
+        const focusValue = parseInt(document.getElementById('focus-control').value);
+
+        const constraints = {
+            advanced: [
+                exposureAuto ? { exposureMode: 'continuous' } : { exposureCompensation: exposureValue, brightness: brightnessValue },
+                whiteBalanceAuto ? { whiteBalanceMode: 'continuous' } : { whiteBalanceMode: 'manual', colorTemperature: whiteBalanceValue },
+                focusAuto ? { focusMode: 'continuous' } : { focusDistance: focusValue }
+            ]
+        };
+
+        videoTrack.applyConstraints(constraints)
+            .then(() => addDebugMessage(`Constraints applied: Exposure/Brightness ${exposureValue}, White Balance ${whiteBalanceValue}, Focus ${focusValue}`))
+            .catch(err => addDebugMessage(`Error applying constraints: ${err}`));
+    }
+}
+
+function updateControlValue(controlId, valueId) {
+    const control = document.getElementById(controlId);
+    const value = document.getElementById(valueId);
+    value.textContent = control.value;
+    applyVideoConstraints();
+}
+
+// Add event listeners for the sliders
+document.getElementById('exposure-control').addEventListener('input', () => updateControlValue('exposure-control', 'exposure-value'));
+document.getElementById('white-balance-control').addEventListener('input', () => updateControlValue('white-balance-control', 'white-balance-value'));
+document.getElementById('focus-control').addEventListener('input', () => updateControlValue('focus-control', 'focus-value'));
+
+// Add event listeners for the auto checkboxes
+document.getElementById('exposure-auto').addEventListener('change', applyVideoConstraints);
+document.getElementById('white-balance-auto').addEventListener('change', applyVideoConstraints);
+document.getElementById('focus-auto').addEventListener('change', applyVideoConstraints);
+
+// Add event listeners for the buttons
+document.getElementById('exposure-decrease').addEventListener('click', () => {
+    const control = document.getElementById('exposure-control');
+    control.stepDown();
+    updateControlValue('exposure-control', 'exposure-value');
+});
+
+document.getElementById('exposure-increase').addEventListener('click', () => {
+    const control = document.getElementById('exposure-control');
+    control.stepUp();
+    updateControlValue('exposure-control', 'exposure-value');
+});
+
+document.getElementById('white-balance-decrease').addEventListener('click', () => {
+    const control = document.getElementById('white-balance-control');
+    control.stepDown();
+    updateControlValue('white-balance-control', 'white-balance-value');
+});
+
+document.getElementById('white-balance-increase').addEventListener('click', () => {
+    const control = document.getElementById('white-balance-control');
+    control.stepUp();
+    updateControlValue('white-balance-control', 'white-balance-value');
+});
+
+document.getElementById('focus-decrease').addEventListener('click', () => {
+    const control = document.getElementById('focus-control');
+    control.stepDown();
+    updateControlValue('focus-control', 'focus-value');
+});
+
+document.getElementById('focus-increase').addEventListener('click', () => {
+    const control = document.getElementById('focus-control');
+    control.stepUp();
+    updateControlValue('focus-control', 'focus-value');
+});
+

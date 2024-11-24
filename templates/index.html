@@ -17,6 +17,31 @@
         </div>
         <div class="controls">
             <button id="start-capture" class="btn">Stop Capture</button>
+            <button id="rotate-btn">Rotate</button>
+            <div>
+                <label for="exposure-control">Exposure/Brightness:</label>
+                <button id="exposure-decrease">-</button>
+                <input type="range" id="exposure-control" min="0" max="255" step="1" value="127">
+                <button id="exposure-increase">+</button>
+                <span id="exposure-value">127</span>
+                <input type="checkbox" id="exposure-auto" checked> Auto
+            </div>
+            <div>
+                <label for="white-balance-control">White Balance:</label>
+                <button id="white-balance-decrease">-</button>
+                <input type="range" id="white-balance-control" min="2000" max="10000" step="100" value="5000">
+                <button id="white-balance-increase">+</button>
+                <span id="white-balance-value">5000</span>
+                <input type="checkbox" id="white-balance-auto" checked> Auto
+            </div>
+            <div>
+                <label for="focus-control">Focus:</label>
+                <button id="focus-decrease">-</button>
+                <input type="range" id="focus-control" min="0" max="100" step="1" value="50">
+                <button id="focus-increase">+</button>
+                <span id="focus-value">50</span>
+                <input type="checkbox" id="focus-auto" checked> Auto
+            </div>
         </div>
         <div class="status-items">
             <div class="status-item" id="status">ready</div>
