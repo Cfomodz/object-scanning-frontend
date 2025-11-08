@@ -19,7 +19,7 @@ A small Flask app with WebSocket support to aid in the semi-autonomous capturing
 
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/Cfomodz/object-scanning-frontend
    cd object-scanning-frontend
    ```
 
