@@ -314,38 +314,22 @@
         let videoTrack;
         let directoryHandle = null;
         let imageCounter = 0;
-        let audioContext = null;
+        let shutterAudio = null;
 
-        // Initialize audio context (lazy loading for browser compatibility)
-        function getAudioContext() {
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            return audioContext;
-        }
+        // Embedded camera shutter sound (1.8KB compressed to base64)
+        const shutterSound = 'data:audio/mp3;base64,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';
 
-        // Generate camera shutter sound using Web Audio API (no file needed!)
+        // Play camera shutter sound
         function playCameraShutter() {
             try {
-                const ctx = getAudioContext();
-                const now = ctx.currentTime;
-
-                // Create a short, sharp click sound
-                const oscillator = ctx.createOscillator();
-                const gainNode = ctx.createGain();
-
-                oscillator.connect(gainNode);
-                gainNode.connect(ctx.destination);
-
-                // Sharp attack and quick decay for camera shutter effect
-                oscillator.frequency.setValueAtTime(800, now);
-                oscillator.frequency.exponentialRampToValueAtTime(100, now + 0.05);
-
-                gainNode.gain.setValueAtTime(0.3, now);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-
-                oscillator.start(now);
-                oscillator.stop(now + 0.1);
+                if (!shutterAudio) {
+                    shutterAudio = new Audio(shutterSound);
+                }
+                // Clone and play to allow rapid successive shots
+                const sound = shutterAudio.cloneNode();
+                sound.play().catch(err => {
+                    addDebugMessage(`Audio playback error: ${err.message}`);
+                });
             } catch (err) {
                 addDebugMessage(`Audio error: ${err.message}`);
             }
