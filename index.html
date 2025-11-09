@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Object Scanner</title>
+    <style>
+        :root {
+            --primary-color: #2196F3;
+            --success-color: #4CAF50;
+            --warning-color: #FF9800;
+            --error-color: #F44336;
+            --background-color: #f5f5f5;
+            --card-background: #ffffff;
+            --text-color: #333333;
+            --border-radius: 8px;
+            --spacing: 20px;
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: var(--spacing);
+            background-color: var(--background-color);
+            color: var(--text-color);
+            transition: var(--transition);
+        }
+
+        .status-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--spacing);
+            background: var(--card-background);
+            border-radius: var(--border-radius);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--text-color);
+            margin-bottom: var(--spacing);
+        }
+
+        .preview-container {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing);
+            gap: 2%;
+        }
+
+        .preview-box {
+            width: 48%;
+            border: 5px solid transparent;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            transition: border-color 0.3s ease;
+            background: #000;
+        }
+
+        .preview-image {
+            width: 100%;
+            height: auto;
+            display: block;
+            min-height: 200px;
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: var(--spacing);
+        }
+
+        .controls > div {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(0,0,0,0.02);
+            border-radius: var(--border-radius);
+        }
+
+        .controls label {
+            display: inline-block;
+            margin-right: 10px;
+            font-weight: 500;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
+            color: #fff;
+            background-color: var(--primary-color);
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn:hover {
+            background-color: #1976D2;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .status-items {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: var(--spacing);
+        }
+
+        .status-item {
+            padding: 8px 16px;
+            border-radius: var(--border-radius);
+            background: rgba(0,0,0,0.05);
+            font-weight: 500;
+        }
+
+        /* Status-specific border colors */
+        body.ready .preview-box {
+            border-color: var(--success-color);
+        }
+
+        body.capturing .preview-box {
+            border-color: var(--primary-color);
+        }
+
+        body.waiting .preview-box {
+            border-color: var(--warning-color);
+        }
+
+        body.error .preview-box {
+            border-color: var(--error-color);
+        }
+
+        /* Debug Console */
+        .debug-console {
+            margin-top: var(--spacing);
+            background: #1e1e1e;
+            border-radius: var(--border-radius);
+            padding: var(--spacing);
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .debug-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        .debug-header h3 {
+            margin: 0;
+            color: #fff;
+        }
+
+        .debug-messages {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            color: #00ff00;
+            white-space: pre-wrap;
+            line-height: 1.4;
+        }
+
+        .debug-messages div {
+            margin: 2px 0;
+        }
+
+        /* Control Inputs */
+        input[type="range"] {
+            width: 200px;
+            margin: 0 10px;
+            vertical-align: middle;
+        }
+
+        input[type="checkbox"] {
+            margin: 0 5px;
+            vertical-align: middle;
+        }
+
+        .control-value {
+            display: inline-block;
+            min-width: 50px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        /* Loading Animation */
+        .preview-image.loading {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .preview-container {
+                flex-direction: column;
+            }
+            
+            .preview-box {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            
+            .status-items {
+                flex-direction: column;
+                align-items: center;
+                gap: var(--spacing);
+            }
+
+            input[type="range"] {
+                width: 150px;
+            }
+
+            .controls > div {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="status-container">
+        <h1>Object Scanner</h1>
+        <div class="preview-container">
+            <div class="preview-box">
+                <video id="live-view" class="preview-image" autoplay muted playsinline></video>
+            </div>
+            <div class="preview-box">
+                <img id="last-captured-view" class="preview-image" alt="Last Captured Image">
+            </div>
+        </div>
+        <div class="controls">
+            <button id="start-capture" class="btn">Stop Capture</button>
+            <button id="rotate-btn" class="btn">Rotate</button>
+            <div>
+                <label for="exposure-control">Exposure/Brightness:</label>
+                <button id="exposure-decrease" class="btn">-</button>
+                <input type="range" id="exposure-control" min="0" max="255" step="1" value="127">
+                <button id="exposure-increase" class="btn">+</button>
+                <span id="exposure-value" class="control-value">127</span>
+                <input type="checkbox" id="exposure-auto" checked>
+                <label for="exposure-auto">Auto</label>
+            </div>
+            <div>
+                <label for="white-balance-control">White Balance:</label>
+                <button id="white-balance-decrease" class="btn">-</button>
+                <input type="range" id="white-balance-control" min="2000" max="10000" step="100" value="5000">
+                <button id="white-balance-increase" class="btn">+</button>
+                <span id="white-balance-value" class="control-value">5000</span>
+                <input type="checkbox" id="white-balance-auto" checked>
+                <label for="white-balance-auto">Auto</label>
+            </div>
+            <div>
+                <label for="focus-control">Focus:</label>
+                <button id="focus-decrease" class="btn">-</button>
+                <input type="range" id="focus-control" min="0" max="100" step="1" value="50">
+                <button id="focus-increase" class="btn">+</button>
+                <span id="focus-value" class="control-value">50</span>
+                <input type="checkbox" id="focus-auto" checked>
+                <label for="focus-auto">Auto</label>
+            </div>
+        </div>
+        <div class="status-items">
+            <div class="status-item" id="status">Initializing...</div>
+        </div>
+        <div class="debug-console">
+            <div class="debug-header">
+                <h3>Debug Console</h3>
+                <button id="clear-debug" class="btn">Clear</button>
+            </div>
+            <div id="debug-log" class="debug-messages"></div>
+        </div>
+    </div>
+
+    <script>
+        // Define Module with onRuntimeInitialized before OpenCV.js is loaded
+        var Module = {
+            onRuntimeInitialized: function() {
+                addDebugMessage('OpenCV.js is ready');
+                startWebcam();
+            }
+        };
+
+        const liveView = document.getElementById('live-view');
+        const lastCapturedView = document.getElementById('last-captured-view');
+        const statusElement = document.getElementById('status');
+        const debugLog = document.getElementById('debug-log');
+        const startCaptureBtn = document.getElementById('start-capture');
+        const clearDebugBtn = document.getElementById('clear-debug');
+        const rotateBtn = document.getElementById('rotate-btn');
+
+        let capturing = true;
+        let motionDetected = false;
+        let motionTimeout = null;
+        let detectingMotion = false;
+        let rotationAngle = 0;
+        let videoTrack;
+
+        function addDebugMessage(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const msgElement = document.createElement('div');
+            msgElement.textContent = `[${timestamp}] ${message}`;
+            debugLog.insertBefore(msgElement, debugLog.firstChild);
+        }
+
+        function startWebcam(deviceId) {
+            const constraints = {
+                video: {
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 },
+                    deviceId: deviceId ? { exact: deviceId } : undefined
+                }
+            };
+            
+            navigator.mediaDevices.getUserMedia(constraints)
+                .then(stream => {
+                    liveView.srcObject = stream;
+                    videoTrack = stream.getVideoTracks()[0];
+                    liveView.onloadedmetadata = () => {
+                        liveView.play();
+                        addDebugMessage('Webcam started');
+                        statusElement.textContent = 'Ready';
+                        document.body.className = 'ready';
+                        if (capturing) {
+                            addDebugMessage('Starting motion detection');
+                            detectMotion();
+                        }
+                    };
+                })
+                .catch(err => {
+                    addDebugMessage(`Error accessing webcam: ${err}`);
+                    statusElement.textContent = 'Error: No camera access';
+                    document.body.className = 'error';
+                });
+        }
+
+        function detectMotion() {
+            if (!capturing || detectingMotion) {
+                return;
+            }
+            detectingMotion = true;
+
+            const width = 320;
+            const height = 240;
+
+            const canvasFrame = document.createElement('canvas');
+            canvasFrame.width = width;
+            canvasFrame.height = height;
+            const context = canvasFrame.getContext('2d');
+
+            let frame = new cv.Mat(height, width, cv.CV_8UC4);
+            let gray = new cv.Mat();
+            let prevGray = new cv.Mat();
+            let diff = new cv.Mat();
+            let thresh = new cv.Mat();
+
+            const fps = 10;
+            const delay = 1000 / fps;
+
+            function processFrame() {
+                if (!capturing) {
+                    detectingMotion = false;
+                    frame.delete();
+                    gray.delete();
+                    prevGray.delete();
+                    diff.delete();
+                    thresh.delete();
+                    return;
+                }
+
+                let begin = Date.now();
+
+                context.clearRect(0, 0, width, height);
+                context.save();
+                context.translate(width / 2, height / 2);
+                context.rotate((rotationAngle * Math.PI) / 180);
+                context.drawImage(liveView, -width / 2, -height / 2, width, height);
+                context.restore();
+
+                let imageData = context.getImageData(0, 0, width, height);
+                frame.data.set(imageData.data);
+                cv.cvtColor(frame, gray, cv.COLOR_RGBA2GRAY);
+
+                if (!prevGray.empty()) {
+                    cv.absdiff(gray, prevGray, diff);
+                    cv.threshold(diff, thresh, 25, 255, cv.THRESH_BINARY);
+
+                    let nonZero = cv.countNonZero(thresh);
+                    addDebugMessage(`Motion pixels: ${nonZero}`);
+
+                    if (nonZero > 17562) {
+                        if (!motionDetected) {
+                            motionDetected = true;
+                            statusElement.textContent = 'Motion Detected';
+                            document.body.className = 'waiting';
+                            addDebugMessage(`Motion detected (pixels changed: ${nonZero})`);
+                        }
+                        clearTimeout(motionTimeout);
+                    } else {
+                        if (motionDetected) {
+                            motionDetected = false;
+                            addDebugMessage('No motion detected, preparing to take picture');
+                            motionTimeout = setTimeout(() => {
+                                takePicture();
+                                statusElement.textContent = 'Ready for Next Item';
+                                document.body.className = 'ready';
+                                addDebugMessage('Picture taken, ready for next item');
+                            }, 1350);
+                        }
+                    }
+                }
+
+                gray.copyTo(prevGray);
+
+                let duration = Date.now() - begin;
+                setTimeout(processFrame, Math.max(0, delay - duration));
+            }
+
+            processFrame();
+        }
+
+        function takePicture() {
+            addDebugMessage('takePicture called');
+
+            const canvas = document.createElement('canvas');
+            canvas.width = liveView.videoWidth;
+            canvas.height = liveView.videoHeight;
+            const context = canvas.getContext('2d');
+
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.save();
+            context.translate(canvas.width / 2, canvas.height / 2);
+            context.rotate((rotationAngle * Math.PI) / 180);
+            context.drawImage(liveView, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
+            context.restore();
+
+            lastCapturedView.src = canvas.toDataURL('image/png');
+
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/png');
+            link.download = `captured-image-${new Date().getTime()}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            addDebugMessage('Picture taken and downloaded');
+        }
+
+        startCaptureBtn.addEventListener('click', () => {
+            capturing = !capturing;
+            startCaptureBtn.textContent = capturing ? 'Stop Capture' : 'Start Capture';
+            addDebugMessage(capturing ? 'Capture started' : 'Capture stopped');
+            if (capturing) {
+                detectMotion();
+                document.body.className = 'ready';
+            } else {
+                motionDetected = false;
+                statusElement.textContent = 'Capture Stopped';
+                document.body.className = 'error';
+                clearTimeout(motionTimeout);
+            }
+        });
+
+        clearDebugBtn.addEventListener('click', () => {
+            debugLog.innerHTML = '';
+        });
+
+        rotateBtn.addEventListener('click', () => {
+            rotationAngle = (rotationAngle + 90) % 360;
+            liveView.style.transform = `rotate(${rotationAngle}deg)`;
+            addDebugMessage(`Rotated to ${rotationAngle} degrees`);
+        });
+
+        function applyVideoConstraints() {
+            if (videoTrack) {
+                const exposureAuto = document.getElementById('exposure-auto').checked;
+                const whiteBalanceAuto = document.getElementById('white-balance-auto').checked;
+                const focusAuto = document.getElementById('focus-auto').checked;
+
+                const sliderValue = parseFloat(document.getElementById('exposure-control').value);
+                const exposureValue = (sliderValue - 127.5) / 12.75;
+                const brightnessValue = sliderValue;
+                const whiteBalanceValue = parseInt(document.getElementById('white-balance-control').value);
+                const focusValue = parseInt(document.getElementById('focus-control').value);
+
+                const constraints = {
+                    advanced: [
+                        exposureAuto ? { exposureMode: 'continuous' } : { exposureCompensation: exposureValue, brightness: brightnessValue },
+                        whiteBalanceAuto ? { whiteBalanceMode: 'continuous' } : { whiteBalanceMode: 'manual', colorTemperature: whiteBalanceValue },
+                        focusAuto ? { focusMode: 'continuous' } : { focusDistance: focusValue }
+                    ]
+                };
+
+                videoTrack.applyConstraints(constraints)
+                    .then(() => addDebugMessage(`Constraints applied: Exposure ${exposureValue.toFixed(2)}, WB ${whiteBalanceValue}, Focus ${focusValue}`))
+                    .catch(err => addDebugMessage(`Error applying constraints: ${err.message}`));
+            }
+        }
+
+        function updateControlValue(controlId, valueId) {
+            const control = document.getElementById(controlId);
+            const value = document.getElementById(valueId);
+            value.textContent = control.value;
+            applyVideoConstraints();
+        }
+
+        // Event listeners for sliders
+        document.getElementById('exposure-control').addEventListener('input', () => updateControlValue('exposure-control', 'exposure-value'));
+        document.getElementById('white-balance-control').addEventListener('input', () => updateControlValue('white-balance-control', 'white-balance-value'));
+        document.getElementById('focus-control').addEventListener('input', () => updateControlValue('focus-control', 'focus-value'));
+
+        // Event listeners for auto checkboxes
+        document.getElementById('exposure-auto').addEventListener('change', applyVideoConstraints);
+        document.getElementById('white-balance-auto').addEventListener('change', applyVideoConstraints);
+        document.getElementById('focus-auto').addEventListener('change', applyVideoConstraints);
+
+        // Event listeners for +/- buttons
+        document.getElementById('exposure-decrease').addEventListener('click', () => {
+            const control = document.getElementById('exposure-control');
+            control.stepDown();
+            updateControlValue('exposure-control', 'exposure-value');
+        });
+
+        document.getElementById('exposure-increase').addEventListener('click', () => {
+            const control = document.getElementById('exposure-control');
+            control.stepUp();
+            updateControlValue('exposure-control', 'exposure-value');
+        });
+
+        document.getElementById('white-balance-decrease').addEventListener('click', () => {
+            const control = document.getElementById('white-balance-control');
+            control.stepDown();
+            updateControlValue('white-balance-control', 'white-balance-value');
+        });
+
+        document.getElementById('white-balance-increase').addEventListener('click', () => {
+            const control = document.getElementById('white-balance-control');
+            control.stepUp();
+            updateControlValue('white-balance-control', 'white-balance-value');
+        });
+
+        document.getElementById('focus-decrease').addEventListener('click', () => {
+            const control = document.getElementById('focus-control');
+            control.stepDown();
+            updateControlValue('focus-control', 'focus-value');
+        });
+
+        document.getElementById('focus-increase').addEventListener('click', () => {
+            const control = document.getElementById('focus-control');
+            control.stepUp();
+            updateControlValue('focus-control', 'focus-value');
+        });
+    </script>
+
+    <!-- Load OpenCV.js from CDN -->
+    <script async src="https://docs.opencv.org/4.x/opencv.js" type="text/javascript"></script>
+</body>
+</html>
+
