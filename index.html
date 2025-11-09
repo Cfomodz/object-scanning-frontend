@@ -314,6 +314,42 @@
         let videoTrack;
         let directoryHandle = null;
         let imageCounter = 0;
+        let audioContext = null;
+
+        // Initialize audio context (lazy loading for browser compatibility)
+        function getAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            return audioContext;
+        }
+
+        // Generate camera shutter sound using Web Audio API (no file needed!)
+        function playCameraShutter() {
+            try {
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+
+                // Create a short, sharp click sound
+                const oscillator = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(ctx.destination);
+
+                // Sharp attack and quick decay for camera shutter effect
+                oscillator.frequency.setValueAtTime(800, now);
+                oscillator.frequency.exponentialRampToValueAtTime(100, now + 0.05);
+
+                gainNode.gain.setValueAtTime(0.3, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+
+                oscillator.start(now);
+                oscillator.stop(now + 0.1);
+            } catch (err) {
+                addDebugMessage(`Audio error: ${err.message}`);
+            }
+        }
 
         function addDebugMessage(message) {
             const timestamp = new Date().toLocaleTimeString();
@@ -421,6 +457,7 @@
                             addDebugMessage('No motion detected, preparing to take picture');
                             motionTimeout = setTimeout(() => {
                                 takePicture();
+                                playCameraShutter();
                                 statusElement.textContent = 'Ready for Next Item';
                                 document.body.className = 'ready';
                                 addDebugMessage('Picture taken, ready for next item');
