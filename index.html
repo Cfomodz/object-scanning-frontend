@@ -245,6 +245,8 @@
         <div class="controls">
             <button id="start-capture" class="btn">Stop Capture</button>
             <button id="rotate-btn" class="btn">Rotate</button>
+            <button id="select-directory" class="btn" title="Select a directory to save images directly">📁 Select Save Directory</button>
+            <span id="directory-status" style="color: #666; font-size: 14px;"></span>
             <div>
                 <label for="exposure-control">Exposure/Brightness:</label>
                 <button id="exposure-decrease" class="btn">-</button>
@@ -301,6 +303,8 @@
         const startCaptureBtn = document.getElementById('start-capture');
         const clearDebugBtn = document.getElementById('clear-debug');
         const rotateBtn = document.getElementById('rotate-btn');
+        const selectDirectoryBtn = document.getElementById('select-directory');
+        const directoryStatus = document.getElementById('directory-status');
 
         let capturing = true;
         let motionDetected = false;
@@ -308,6 +312,8 @@
         let detectingMotion = false;
         let rotationAngle = 0;
         let videoTrack;
+        let directoryHandle = null;
+        let imageCounter = 0;
 
         function addDebugMessage(message) {
             const timestamp = new Date().toLocaleTimeString();
@@ -449,14 +455,79 @@
 
             lastCapturedView.src = canvas.toDataURL('image/png');
 
+            // Save the image
+            saveImage(canvas);
+
+            addDebugMessage('Picture taken and saved');
+        }
+
+        async function saveImage(canvas) {
+            const timestamp = new Date().getTime();
+            const filename = `object-scan-${timestamp}.png`;
+
+            // Try to use File System Access API if directory is selected
+            if (directoryHandle && window.showDirectoryPicker) {
+                try {
+                    const fileHandle = await directoryHandle.getFileHandle(filename, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    
+                    // Convert canvas to blob
+                    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                    
+                    await writable.write(blob);
+                    await writable.close();
+                    
+                    addDebugMessage(`Image saved to selected directory: ${filename}`);
+                    imageCounter++;
+                    updateDirectoryStatus();
+                    return;
+                } catch (err) {
+                    addDebugMessage(`Error saving to directory: ${err.message}`);
+                    // Fall through to download method
+                }
+            }
+
+            // Fallback: Traditional download method with unique prefix
             const link = document.createElement('a');
             link.href = canvas.toDataURL('image/png');
-            link.download = `captured-image-${new Date().getTime()}.png`;
+            link.download = filename;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+            
+            addDebugMessage(`Image downloaded: ${filename}`);
+        }
 
-            addDebugMessage('Picture taken and downloaded');
+        async function selectDirectory() {
+            if (!window.showDirectoryPicker) {
+                alert('File System Access API is not supported in this browser.\n\nImages will be downloaded to your default Downloads folder with the prefix "object-scan-".\n\nSupported browsers: Chrome 86+, Edge 86+');
+                addDebugMessage('File System Access API not supported');
+                return;
+            }
+
+            try {
+                directoryHandle = await window.showDirectoryPicker({
+                    mode: 'readwrite'
+                });
+                
+                imageCounter = 0;
+                updateDirectoryStatus();
+                addDebugMessage(`Directory selected: ${directoryHandle.name}`);
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    addDebugMessage(`Error selecting directory: ${err.message}`);
+                }
+            }
+        }
+
+        function updateDirectoryStatus() {
+            if (directoryHandle) {
+                directoryStatus.textContent = `✓ Saving to: ${directoryHandle.name}/ (${imageCounter} images saved)`;
+                directoryStatus.style.color = '#4CAF50';
+            } else {
+                directoryStatus.textContent = 'Using browser downloads';
+                directoryStatus.style.color = '#666';
+            }
         }
 
         startCaptureBtn.addEventListener('click', () => {
@@ -483,6 +554,11 @@
             liveView.style.transform = `rotate(${rotationAngle}deg)`;
             addDebugMessage(`Rotated to ${rotationAngle} degrees`);
         });
+
+        selectDirectoryBtn.addEventListener('click', selectDirectory);
+
+        // Initialize directory status
+        updateDirectoryStatus();
 
         function applyVideoConstraints() {
             if (videoTrack) {
