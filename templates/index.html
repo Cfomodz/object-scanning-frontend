@@ -18,29 +18,41 @@
         <div class="controls">
             <button id="start-capture" class="btn">Stop Capture</button>
             <button id="rotate-btn">Rotate</button>
-            <div>
-                <label for="exposure-control">Exposure/Brightness:</label>
-                <button id="exposure-decrease">-</button>
-                <input type="range" id="exposure-control" min="0" max="255" step="1" value="127">
-                <button id="exposure-increase">+</button>
-                <span id="exposure-value">127</span>
-                <input type="checkbox" id="exposure-auto" checked> Auto
+            <button id="refresh-settings-btn">Refresh Camera Settings</button>
+            <div class="resolution-selector">
+                <label for="resolution-select">Resolution:</label>
+                <select id="resolution-select" class="resolution-dropdown">
+                    <option value="320x240">320x240</option>
+                    <option value="640x480" selected>640x480 (VGA)</option>
+                    <option value="800x600">800x600 (SVGA)</option>
+                    <option value="1024x768">1024x768 (XGA)</option>
+                    <option value="1280x720">1280x720 (HD 720p)</option>
+                    <option value="1280x960">1280x960</option>
+                    <option value="1600x1200">1600x1200 (UXGA)</option>
+                    <option value="1920x1080">1920x1080 (Full HD)</option>
+                    <option value="2048x1536">2048x1536 (QXGA)</option>
+                    <option value="2592x1944">2592x1944 (5MP)</option>
+                    <option value="3840x2160">3840x2160 (4K UHD)</option>
+                </select>
             </div>
-            <div>
-                <label for="white-balance-control">White Balance:</label>
-                <button id="white-balance-decrease">-</button>
-                <input type="range" id="white-balance-control" min="2000" max="10000" step="100" value="5000">
-                <button id="white-balance-increase">+</button>
-                <span id="white-balance-value">5000</span>
-                <input type="checkbox" id="white-balance-auto" checked> Auto
+            <div class="profile-manager">
+                <h3>Camera Profiles</h3>
+                <div class="profile-controls">
+                    <div class="profile-row">
+                        <input type="text" id="profile-name" placeholder="Profile name..." class="profile-input">
+                        <button id="save-profile-btn" class="btn btn-success">Save Profile</button>
+                    </div>
+                    <div class="profile-row">
+                        <select id="profile-select" class="profile-dropdown">
+                            <option value="">-- Select Profile --</option>
+                        </select>
+                        <button id="load-profile-btn" class="btn btn-primary">Load</button>
+                        <button id="delete-profile-btn" class="btn btn-danger">Delete</button>
+                    </div>
+                </div>
             </div>
-            <div>
-                <label for="focus-control">Focus:</label>
-                <button id="focus-decrease">-</button>
-                <input type="range" id="focus-control" min="0" max="100" step="1" value="50">
-                <button id="focus-increase">+</button>
-                <span id="focus-value">50</span>
-                <input type="checkbox" id="focus-auto" checked> Auto
+            <div id="dynamic-controls" class="dynamic-controls-container">
+                <!-- Dynamic camera controls will be inserted here -->
             </div>
         </div>
         <div class="status-items">
@@ -56,7 +68,7 @@
     </div>
 
     <!-- Include main.js before OpenCV.js -->
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=5"></script>
     <!-- Include OpenCV.js without the async attribute -->
     <script src="https://docs.opencv.org/4.x/opencv.js" type="text/javascript"></script>
 </body>
