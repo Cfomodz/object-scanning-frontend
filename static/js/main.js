@@ -16,6 +16,8 @@ const debugLog = document.getElementById('debug-log');
 const startCaptureBtn = document.getElementById('start-capture');
 const clearDebugBtn = document.getElementById('clear-debug');
 const rotateBtn = document.getElementById('rotate-btn');
+const modeSelector = document.getElementById('mode-selector');
+const bluetoothConnectBtn = document.getElementById('bluetooth-connect');
 
 let capturing = true;
 let motionDetected = false;
@@ -23,6 +25,9 @@ let motionTimeout = null;
 let detectingMotion = false; // To prevent multiple concurrent detectMotion calls
 let rotationAngle = 0; // Rotation angle in degrees
 let videoTrack;
+let currentMode = 'webcam';
+let bluetoothDevice;
+let shutterCharacteristic;
 
 function addDebugMessage(message) {
     const timestamp = new Date().toLocaleTimeString();
@@ -172,48 +177,53 @@ function detectMotion() {
 
 function takePicture() {
     addDebugMessage('takePicture called');
+    if (currentMode === 'webcam') {
+        // Existing webcam capture logic
+        const canvas = document.createElement('canvas');
+        canvas.width = liveView.videoWidth;
+        canvas.height = liveView.videoHeight;
+        const context = canvas.getContext('2d');
 
-    const canvas = document.createElement('canvas');
-    canvas.width = liveView.videoWidth;
-    canvas.height = liveView.videoHeight;
-    const context = canvas.getContext('2d');
+        // Clear the canvas
+        context.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Clear the canvas
-    context.clearRect(0, 0, canvas.width, canvas.height);
+        // Save the context state
+        context.save();
 
-    // Save the context state
-    context.save();
+        // Translate to the center of the canvas
+        context.translate(canvas.width / 2, canvas.height / 2);
 
-    // Translate to the center of the canvas
-    context.translate(canvas.width / 2, canvas.height / 2);
+        // Rotate the canvas
+        context.rotate((rotationAngle * Math.PI) / 180);
 
-    // Rotate the canvas
-    context.rotate((rotationAngle * Math.PI) / 180);
+        // Draw the video frame with rotation
+        context.drawImage(
+            liveView,
+            -canvas.width / 2,
+            -canvas.height / 2,
+            canvas.width,
+            canvas.height
+        );
 
-    // Draw the video frame with rotation
-    context.drawImage(
-        liveView,
-        -canvas.width / 2,
-        -canvas.height / 2,
-        canvas.width,
-        canvas.height
-    );
+        // Restore the context state
+        context.restore();
 
-    // Restore the context state
-    context.restore();
+        // Display the captured image
+        lastCapturedView.src = canvas.toDataURL('image/png');
 
-    // Display the captured image
-    lastCapturedView.src = canvas.toDataURL('image/png');
+        // Download the image
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/png');
+        link.download = `captured-image-${new Date().getTime()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
 
-    // Download the image
-    const link = document.createElement('a');
-    link.href = canvas.toDataURL('image/png');
-    link.download = `captured-image-${new Date().getTime()}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    addDebugMessage('Picture taken');
+        addDebugMessage('Picture taken');
+    } else if (currentMode === 'bluetooth') {
+        // Trigger Bluetooth shutter
+        triggerShutterRelease();
+    }
 }
 
 startCaptureBtn.addEventListener('click', () => {
@@ -321,4 +331,62 @@ document.getElementById('focus-increase').addEventListener('click', () => {
     control.stepUp();
     updateControlValue('focus-control', 'focus-value');
 });
+
+// Function to connect to the Bluetooth device
+async function connectToBluetoothDevice() {
+    try {
+        addDebugMessage('Requesting Bluetooth device...');
+        
+        // Request a Bluetooth device with specific services
+        bluetoothDevice = await navigator.bluetooth.requestDevice({
+            filters: [{ services: ['your-service-uuid'] }] // Replace with the correct service UUID
+        });
+
+        // Connect to the GATT server
+        const server = await bluetoothDevice.gatt.connect();
+        
+        // Get the primary service
+        const service = await server.getPrimaryService('your-service-uuid'); // Replace with the correct service UUID
+        
+        // Get the characteristic
+        shutterCharacteristic = await service.getCharacteristic('your-characteristic-uuid'); // Replace with the correct characteristic UUID
+
+        addDebugMessage('Bluetooth device connected');
+    } catch (error) {
+        addDebugMessage(`Bluetooth connection failed: ${error}`);
+    }
+}
+
+// Function to trigger the shutter release
+async function triggerShutterRelease() {
+    if (!shutterCharacteristic) {
+        addDebugMessage('Shutter characteristic not available');
+        return;
+    }
+
+    try {
+        // Send a command to the characteristic to trigger the shutter
+        const command = new Uint8Array([0x01]); // Replace with the correct command
+        await shutterCharacteristic.writeValue(command);
+        addDebugMessage('Shutter release triggered');
+    } catch (error) {
+        addDebugMessage(`Failed to trigger shutter: ${error}`);
+    }
+}
+
+// navigator.bluetooth.requestDevice() requires a user gesture, so connect on
+// click rather than on load, where the browser always rejects it.
+if (bluetoothConnectBtn) {
+    bluetoothConnectBtn.addEventListener('click', () => {
+        connectToBluetoothDevice();
+    });
+}
+
+// Add event listener for mode selector
+if (modeSelector) {
+    modeSelector.addEventListener('change', (event) => {
+        currentMode = event.target.value;
+        addDebugMessage(`Mode changed to: ${currentMode}`);
+    });
+}
 
